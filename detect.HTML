@@ -27,10 +27,14 @@
       videoElement.width = 640;
       videoElement.height = 480;
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true
-      });
-      videoElement.srcObject = stream;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true
+        });
+        videoElement.srcObject = stream;
+      } catch (err) {
+        console.error('Error accessing the webcam:', err);
+      }
 
       return new Promise((resolve) => {
         videoElement.onloadedmetadata = () => {
