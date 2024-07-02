@@ -24,6 +24,7 @@
     const canvasCtx = canvasElement.getContext('2d');
 
     async function setupCamera() {
+      console.log("Setting up camera...");
       videoElement.width = 640;
       videoElement.height = 480;
 
@@ -32,6 +33,7 @@
           video: true
         });
         videoElement.srcObject = stream;
+        console.log("Camera stream obtained.");
       } catch (err) {
         console.error('Error accessing the webcam:', err);
       }
@@ -45,9 +47,13 @@
 
     async function loadPosenet() {
       console.log("Loading PoseNet model...");
-      const net = await posenet.load();
-      console.log("PoseNet model loaded.");
-      return net;
+      try {
+        const net = await posenet.load();
+        console.log("PoseNet model loaded.");
+        return net;
+      } catch (err) {
+        console.error("Error loading PoseNet model:", err);
+      }
     }
 
     function drawKeypoints(keypoints, minConfidence, ctx, scale = 1) {
@@ -77,31 +83,40 @@
     }
 
     async function detectPose(net) {
-      const pose = await net.estimateSinglePose(videoElement, {
-        flipHorizontal: false
-      });
+      console.log("Detecting pose...");
+      try {
+        const pose = await net.estimateSinglePose(videoElement, {
+          flipHorizontal: false
+        });
 
-      console.log("Pose detected:", pose);
+        console.log("Pose detected:", pose);
 
-      if (pose && pose.keypoints) {
-        console.log("Keypoints detected:", pose.keypoints);
-      } else {
-        console.log("No keypoints detected.");
+        if (pose && pose.keypoints) {
+          console.log("Keypoints detected:", pose.keypoints);
+        } else {
+          console.log("No keypoints detected.");
+        }
+
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+        drawKeypoints(pose.keypoints, 0.5, canvasCtx);
+        drawSkeleton(pose.keypoints, 0.5, canvasCtx);
+
+        requestAnimationFrame(() => detectPose(net));
+      } catch (err) {
+        console.error("Error detecting pose:", err);
       }
-
-      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-      drawKeypoints(pose.keypoints, 0.5, canvasCtx);
-      drawSkeleton(pose.keypoints, 0.5, canvasCtx);
-
-      requestAnimationFrame(() => detectPose(net));
     }
 
     async function main() {
       await setupCamera();
       videoElement.play();
       const net = await loadPosenet();
-      detectPose(net);
+      if (net) {
+        detectPose(net);
+      } else {
+        console.error("PoseNet model failed to load.");
+      }
     }
 
     main();
